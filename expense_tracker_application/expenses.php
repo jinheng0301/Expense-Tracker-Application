@@ -68,8 +68,9 @@ $result = $conn->query($sql);
                     <input type="number" step="0.01" name="amount" placeholder="Amount" required>
                     <input type="text" name="report_month" placeholder="Report Month" required>
                     <select name="status">
-                        <option value="Not Submitted">Not Submitted</option>
-                        <option value="Submitted">Submitted</option>
+                        <option value="Not Submitted">Not Yet</option>
+                        <option value="Not Submitted">Pending...</option>
+                        <option value="Submitted">Done</option>
                     </select>
                     <button type="submit" name="add_expense">Add Expense</button>
                 </form>

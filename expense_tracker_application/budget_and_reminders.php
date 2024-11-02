@@ -129,7 +129,7 @@ $budget_results = $conn->query("SELECT * FROM budgets");
                                 const startDate = document.getElementById("start_date").value;
                                 const endDate = document.getElementById("end_date").value;
                                 const budget = document.getElementById("budget").value;
-                                const reminder = document.getElementById("reminder").value;        
+                                const reminder = document.getElementById("reminder").value;
                                 addBudgetRow(startDate, endDate, budget, reminder);
                                 alert(data.message);
                             } else {

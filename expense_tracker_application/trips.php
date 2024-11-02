@@ -88,7 +88,7 @@ $result = $conn->query($sql);
                             <td><?= $row['date'] ?></td>
                             <td><?= $row['location'] ?></td>
                             <td><?= $row['purpose'] ?></td>
-                            <td>€<?= $row['amount'] ?></td>
+                            <td>RM<?= $row['amount'] ?></td>
                             <td><?= $row['report_month'] ?></td>
                             <td><?= $row['status'] ?></td>
                         </tr>
