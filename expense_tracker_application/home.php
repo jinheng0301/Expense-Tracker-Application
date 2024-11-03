@@ -35,7 +35,7 @@ $result2 = $conn->query($sql);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Expense Tracker Home</title>
+    <title>Home</title>
     <link rel="stylesheet" href="home_style.css">
     <style>
         * {
@@ -333,10 +333,10 @@ $result2 = $conn->query($sql);
 
             <!-- Quick Access -->
             <section class="quick-access">
-                <button>+ New Expense</button>
+                <button onclick="document.location='expenses.php'">+ New Expense</button>
+                <button onclick="document.location='trips.php'">+ Create Trip</button>
                 <button>+ Add Receipt</button>
                 <button>+ Create Report</button>
-                <button>+ Create Trip</button>
             </section>
 
             <!-- Monthly Report -->
