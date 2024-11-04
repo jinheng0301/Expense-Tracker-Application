@@ -18,15 +18,29 @@ $result1 = $conn->query($sql);
 $sql = "SELECT date, location, purpose, amount, status FROM trips ORDER BY date";
 $result2 = $conn->query($sql);
 
-// // Prepare data for JavaScript (to be used for the chart)
-// $expenseData = [];
-// while ($row = $result1->fetch_assoc()) {
-//     $expenseData[] = [
-//         'details' => $row['details'],
-//         'amount' => $row['amount'],
-//         'date' => $row['date']
-//     ];
-// }
+// Store the data in an array for JavaScript
+$expenseData = [];
+$expensesTableData = [];  // This will store data for the table
+while ($row = $result1->fetch_assoc()) {
+    $expenseData[] = [
+        "details" => $row['details'],
+        "amount" => $row['amount'],
+        "date" => $row['date']
+    ];
+    $expensesTableData[] = $row;  // Copy row data to another array for table rendering
+}
+
+// Fetch recent trips data for JavaScript
+$tripData = [];
+$tripTableData = [];
+while ($row = $result2->fetch_assoc()) {
+    $tripData[] = [
+        "date" => $row['date'],
+        "location" => $row['location'],
+        "amount" => $row['amount']
+    ];
+    $tripTableData[] = $row;
+}
 ?>
 
 <!DOCTYPE html>
@@ -239,6 +253,17 @@ $result2 = $conn->query($sql);
             color: #888;
             font-weight: bold;
         }
+
+        .chart canvas {
+            background-color: wheat;
+            border-radius: 10px;
+        }
+
+        .chart h3 {
+            color: #FFC107;
+            font-size: 1.2em;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 
@@ -270,14 +295,6 @@ $result2 = $conn->query($sql);
             <!-- Top Section -->
             <section class="top-section">
                 <div class="recent-trips">
-                    <!-- <h3>Pending Tasks</h3>
-                    <ul>
-                        <li>Pending Approvals <span>5</span></li>
-                        <li>New Trips Registered <span>1</span></li>
-                        <li>Unreported Expenses <span>4</span></li>
-                        <li>Upcoming Expenses <span>0</span></li>
-                        <li>Unreported Advances <span>RM0.00</span></li>
-                    </ul> -->
                     <h3>Recent Trips</h3>
                     <table>
                         <thead>
@@ -290,7 +307,7 @@ $result2 = $conn->query($sql);
                             </tr>
                         </thead>
                         <tbody>
-                            <?php while ($row = $result2->fetch_assoc()) : ?>
+                            <?php foreach ($tripTableData as $row): ?>
                                 <tr>
                                     <td><?= htmlspecialchars($row['date']) ?></td>
                                     <td><?= htmlspecialchars($row['location']) ?></td>
@@ -298,7 +315,7 @@ $result2 = $conn->query($sql);
                                     <td><?= htmlspecialchars($row['status']) ?></td>
                                     <td>RM<?= htmlspecialchars($row['amount']) ?></td>
                                 </tr>
-                            <?php endwhile; ?>
+                            <?php endforeach; ?>
                         </tbody>
                     </table>
 
@@ -317,7 +334,7 @@ $result2 = $conn->query($sql);
                             </tr>
                         </thead>
                         <tbody>
-                            <?php while ($row = $result1->fetch_assoc()): ?>
+                            <?php foreach ($expensesTableData as $row): ?>
                                 <tr>
                                     <td><?= htmlspecialchars($row['date']) ?></td>
                                     <td><?= htmlspecialchars($row['details']) ?></td>
@@ -325,7 +342,7 @@ $result2 = $conn->query($sql);
                                     <td><?= htmlspecialchars($row['status']) ?></td>
                                     <td>RM<?= htmlspecialchars($row['amount']) ?></td>
                                 </tr>
-                            <?php endwhile; ?>
+                            <?php endforeach; ?>
                         </tbody>
                     </table>
                 </div>
@@ -335,18 +352,18 @@ $result2 = $conn->query($sql);
             <section class="quick-access">
                 <button onclick="document.location='expenses.php'">+ New Expense</button>
                 <button onclick="document.location='trips.php'">+ Create Trip</button>
-                <button>+ Add Receipt</button>
                 <button>+ Create Report</button>
+                <button>+ Add Receipt</button>
             </section>
 
             <!-- Monthly Report -->
             <section class="monthly-report">
                 <div class="chart">
-                    <h3>Team Spending Trend</h3>
-                    <canvas id="teamTrendChart"></canvas>
+                    <h3>Recent trips chart</h3>
+                    <canvas id="recentTripsChart"></canvas>
                 </div>
                 <div class="chart">
-                    <h3>Day-to-Day Expenses</h3>
+                    <h3>Expenses chart</h3>
                     <canvas id="dailyExpensesChart"></canvas>
                 </div>
             </section>
@@ -355,6 +372,7 @@ $result2 = $conn->query($sql);
 
     <script>
         // Convert PHP array to JavaScript for chart data
+        const tripData = <?php echo json_encode($tripData); ?>;
         const expenseData = <?php echo json_encode($expenseData); ?>;
 
         // Function to dynamically draw the bar chart
@@ -370,9 +388,10 @@ $result2 = $conn->query($sql);
             canvas.height = canvas.offsetHeight;
 
             // Data extraction
-            const amounts = data.map(item => item.amount);
-            const labels = data.map(item => item.details);
+            const amounts = data.map(item => parseFloat(item.amount));
+            const labels = data.map(item => new Date(item.date).toLocaleDateString("en-GB"));
 
+            // Calculate dimensions for bars
             const barWidth = Math.floor((canvas.width - 60) / amounts.length) - 10;
             const maxValue = Math.max(...amounts);
             const scale = (canvas.height - 40) / maxValue;
@@ -389,22 +408,75 @@ $result2 = $conn->query($sql);
                 ctx.fillStyle = colors[index % colors.length];
                 ctx.fillRect(x, y, barWidth, barHeight);
 
-                // Add label below each bar
+                // Add label below each bar (date)
                 ctx.fillStyle = "#000";
                 ctx.font = "12px Arial";
                 ctx.textAlign = "center";
                 ctx.fillText(labels[index], x + barWidth / 2, canvas.height - 5);
+
+                // Display amount at the top of each bar
+                ctx.fillText("RM" + value, x + barWidth / 2, y - 5);
             });
         }
 
-        // Draw the chart when the page loads
+        function drawTripBarChart(canvasId, data) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext("2d");
+
+            // Clear previous drawings
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Resize canvas to its container
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+
+            // Extract amounts and labels
+            const amounts = data.map(item => parseFloat(item.amount));
+            const labels = data.map(item => item.location);
+
+            // Bar width and scale calculations
+            const barWidth = Math.floor((canvas.width - 60) / amounts.length) - 10;
+            const maxValue = Math.max(...amounts) || 1; // Prevent division by zero
+            const scale = (canvas.height - 40) / maxValue;
+
+            // Colors for bars
+            const colors = ["#FF5722", "#FF9800", "#FFC107", "#FFEB3B", "#CDDC39"];
+
+            // Draw each bar
+            amounts.forEach((value, index) => {
+                const barHeight = value * scale;
+                const x = 30 + (index * (barWidth + 10));
+                const y = canvas.height - barHeight - 20;
+
+                // Create gradient for each bar
+                const gradient = ctx.createLinearGradient(x, y, x, y + barHeight);
+                gradient.addColorStop(0, colors[index % colors.length]);
+                gradient.addColorStop(1, colors[(index + 1) % colors.length]);
+
+                ctx.fillStyle = gradient;
+                ctx.fillRect(x, y, barWidth, barHeight);
+
+                // Labels below each bar
+                ctx.fillStyle = "#000";
+                ctx.font = "12px Arial";
+                ctx.textAlign = "center";
+                ctx.fillText(labels[index], x + barWidth / 2, canvas.height - 5);
+
+                // Display amount at top of each bar
+                ctx.fillText("RM" + value, x + barWidth / 2, y - 5);
+            });
+        }
+
+        // Draw the charts when the page loads
         document.addEventListener("DOMContentLoaded", function() {
-            drawExpenseBarChart("teamTrendChart", expenseData);
+            drawExpenseBarChart("dailyExpensesChart", expenseData);
+            drawTripBarChart("recentTripsChart", tripData);
         });
 
-        // Redraw the chart on window resize
+        // Redraw the charts on window resize
         window.addEventListener('resize', function() {
-            drawExpenseBarChart("teamTrendChart", expenseData);
+            drawExpenseBarChart("dailyExpensesChart", expenseData);
+            drawTripBarChart("recentTripsChart", tripData);
         });
     </script>
 </body>
