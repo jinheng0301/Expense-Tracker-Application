@@ -264,6 +264,87 @@ while ($row = $result2->fetch_assoc()) {
             font-size: 1.2em;
             margin-bottom: 10px;
         }
+
+        /* Updated dialog overlay style for a soft background blur effect */
+        .dialog-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+            /* Adds a soft blur to the background */
+            transition: opacity 0.3s ease;
+            /* Fade-in effect for overlay */
+        }
+
+        /* Dialog box style with gradient background and enhanced shadow */
+        .dialog-box {
+            background: linear-gradient(135deg, #3f51b5, #2196f3);
+            /* Gradient background */
+            color: #ffffff;
+            padding: 30px;
+            width: 80%;
+            max-width: 500px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0px 8px 20px rgba(0, 0, 0, 0.5);
+            /* Stronger shadow for depth */
+            opacity: 0;
+            transform: scale(0.9);
+            animation: dialogFadeIn 0.4s forwards;
+            /* Scale-up animation */
+        }
+
+        /* Animation for dialog appearance */
+        @keyframes dialogFadeIn {
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* Enhanced heading style */
+        .dialog-box h3 {
+            margin-top: 0;
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #ffeb3b;
+            /* Light yellow to add contrast */
+        }
+
+        /* Button style with hover and focus effects */
+        .dialog-box button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #ff5722;
+            /* Accent color for the button */
+            color: #ffffff;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1em;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+
+        .dialog-box button:hover {
+            background-color: #e64a19;
+            /* Darker shade on hover */
+            transform: scale(1.05);
+            /* Slight scale-up on hover */
+        }
+
+        .dialog-box button:focus {
+            outline: none;
+            box-shadow: 0 0 8px rgba(255, 87, 34, 0.5);
+            /* Glow effect on focus */
+        }
     </style>
 </head>
 
@@ -352,7 +433,7 @@ while ($row = $result2->fetch_assoc()) {
             <section class="quick-access">
                 <button onclick="document.location='expenses.php'">+ New Expense</button>
                 <button onclick="document.location='trips.php'">+ Create Trip</button>
-                <button>+ Create Report</button>
+                <button onclick="openReportDialog()">+ Create Report</button>
                 <button>+ Add Receipt</button>
             </section>
 
@@ -369,6 +450,18 @@ while ($row = $result2->fetch_assoc()) {
             </section>
         </main>
     </div>
+
+    <!-- Report Dialog Box -->
+    <div id="reportDialog" class="dialog-overlay" style="display: none;">
+        <div class="dialog-box">
+            <h3>Expense Summary Report</h3>
+            <div id="reportContent">
+                <!-- Report content will be dynamically generated -->
+            </div>
+            <button onclick="closeReportDialog()">Close</button>
+        </div>
+    </div>
+
 
     <script>
         // Convert PHP array to JavaScript for chart data
@@ -466,6 +559,40 @@ while ($row = $result2->fetch_assoc()) {
                 ctx.fillText("RM" + value, x + barWidth / 2, y - 5);
             });
         }
+
+        function openReportDialog() {
+            // Populate the report with summary data
+            const reportContent = document.getElementById('reportContent');
+
+            // Calculate total expenses and number of categories
+            let totalAmount = expenseData.reduce((sum, item) => sum + parseFloat(item.amount), 0);
+            let categories = {};
+            expenseData.forEach(item => {
+                if (!categories[item.details]) {
+                    categories[item.details] = 0;
+                }
+                categories[item.details] += parseFloat(item.amount);
+            });
+
+            // Generate the HTML content
+            let contentHtml = `<p><strong>Total Expenses:</strong> RM${totalAmount.toFixed(2)}</p>`;
+            contentHtml += `<h4>Expenses by Category:</h4><ul>`;
+            for (const category in categories) {
+                contentHtml += `<li>${category}: RM${categories[category].toFixed(2)}</li>`;
+            }
+            contentHtml += `</ul>`;
+
+            // Insert the content into the dialog
+            reportContent.innerHTML = contentHtml;
+
+            // Show the dialog
+            document.getElementById('reportDialog').style.display = 'flex';
+        }
+
+        function closeReportDialog() {
+            document.getElementById('reportDialog').style.display = 'none';
+        }
+
 
         // Draw the charts when the page loads
         document.addEventListener("DOMContentLoaded", function() {
