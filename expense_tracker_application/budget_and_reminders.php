@@ -9,25 +9,55 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
+$edit_row = null; // Variable to hold row data for editing
+
+// Check if an edit request was made
+if (isset($_GET['edit_id'])) {
+    $edit_id = $_GET['edit_id'];
+    $edit_query = "SELECT * FROM expense WHERE id='$edit_id'";
+    $edit_result = $conn->query($edit_query);
+    if ($edit_result->num_rows > 0) {
+        $edit_row = $edit_result->fetch_assoc();
+    }
+}
+
 // Handle AJAX for budget insertion
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['ajax'])) {
+    $response = [];
+
     if ($_POST['action'] == 'add_budget') {
         $budget = $_POST['budget'];
         $reminder = $_POST['reminder'];
         $start_date = $_POST['start_date'];
         $end_date = $_POST['end_date'];
 
-        // Modify the SQL to insert into the combined budgets table
         $sql = "INSERT INTO budgets (amount, start_date, reminder, end_date) VALUES ('$budget', '$start_date', '$reminder', '$end_date')";
-        if ($conn->query($sql)) {
-            echo json_encode(['status' => 'success', 'message' => 'Budget and reminder added successfully']);
-        } else {
-            echo json_encode(['status' => 'error', 'message' => 'Failed to add budget and reminder']);
-        }
+        $response['status'] = $conn->query($sql) ? 'success' : 'error';
+        $response['message'] = $response['status'] === 'success' ? 'Budget and reminder added successfully' : 'Failed to add budget and reminder';
     }
+
+    if ($_POST['action'] == 'edit_budget') {
+        $id = $_POST['id'];
+        $budget = $_POST['budget'];
+        $reminder = $_POST['reminder'];
+        $start_date = $_POST['start_date'];
+        $end_date = $_POST['end_date'];
+
+        $sql = "UPDATE budgets SET amount='$budget', start_date='$start_date', reminder='$reminder', end_date='$end_date' WHERE id='$id'";
+        $response['status'] = $conn->query($sql) ? 'success' : 'error';
+        $response['message'] = $response['status'] === 'success' ? 'Budget updated successfully' : 'Failed to update budget';
+    }
+
+    if ($_POST['action'] == 'delete_budget') {
+        $id = $_POST['id'];
+        $sql = "DELETE FROM budgets WHERE id='$id'";
+        $response['status'] = $conn->query($sql) ? 'success' : 'error';
+        $response['message'] = $response['status'] === 'success' ? 'Budget deleted successfully' : 'Failed to delete budget';
+    }
+
+    echo json_encode($response);
     exit;
 }
-
 // Fetch budgets for initial load
 $budget_results = $conn->query("SELECT * FROM budgets");
 ?>
@@ -81,8 +111,8 @@ $budget_results = $conn->query("SELECT * FROM budgets");
         }
 
         .profile img {
-            width: 40px;
-            height: 40px;
+            width: 90px;
+            height: 120px;
             border-radius: 50%;
             border: 2px solid #888;
             transition: transform 0.3s;
@@ -195,6 +225,33 @@ $budget_results = $conn->query("SELECT * FROM budgets");
             font-weight: bold;
             padding: 20px 0;
         }
+
+        .edit-btn,
+        .delete-btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            font-size: 14px;
+        }
+
+        .edit-btn {
+            background-color: #4CAF50;
+        }
+
+        .edit-btn:hover {
+            background-color: #45A049;
+        }
+
+        .delete-btn {
+            background-color: #f44336;
+        }
+
+        .delete-btn:hover {
+            background-color: #e31e10;
+        }
     </style>
 </head>
 
@@ -202,15 +259,14 @@ $budget_results = $conn->query("SELECT * FROM budgets");
     <div class="container">
         <aside class="sidebar">
             <div class="profile">
-                <img src="profile.jpg" alt="Profile Picture">
+                <img src="lengzai2.jpg" alt="Profile Picture">
                 <p>Jin Heng Fam</p>
             </div>
             <nav class="menu">
-                <a href="home.php" class="active">Home</a>
+                <a href="home.php">Home</a>
                 <a href="expenses.php">Expenses</a>
                 <a href="trips.php">Trips</a>
-                <a href="budget_and_reminders.php">Budgets & Reminders</a>
-                <a href="#">Support</a>
+                <a href="budget_and_reminders.php" class="active">Budgets & Reminders</a>
             </nav>
             <footer>
                 <p>EXPENSIO</p>
@@ -250,6 +306,10 @@ $budget_results = $conn->query("SELECT * FROM budgets");
                                 <td><?= $row['end_date'] ?></td>
                                 <td><?= $row['amount'] ?></td>
                                 <td><?= $row['reminder'] ?></td>
+                                <td>
+                                    <button class="edit-btn">Edit</button>
+                                    <button class="delete-btn">Delete</button>
+                                </td>
                             </tr>
                         <?php endwhile; ?>
                     </table>
@@ -260,39 +320,66 @@ $budget_results = $conn->query("SELECT * FROM budgets");
         <script>
             document.addEventListener("DOMContentLoaded", () => {
                 const budgetForm = document.getElementById("budget-form");
-                const reminderList = document.getElementById("reminder-list").querySelector("table");
+                const reminderList = document.querySelector("#reminder-list table");
 
-                // Function to add a new row dynamically
-                function addBudgetRow(startDate, budget, reminder, endDate) {
-                    const newRow = document.createElement("tr");
-                    newRow.innerHTML = `<td>${startDate}</td><td>${budget}</td><td>${reminder}</td><td>${endDate}</td>`;
-                    reminderList.appendChild(newRow);
-                }
+                // Add event listeners for Edit and Delete buttons
+                reminderList.addEventListener("click", function(e) {
+                    const row = e.target.closest("tr");
+                    const id = row.getAttribute("data-id");
 
-                // AJAX for adding budget and reminder
+                    if (e.target.classList.contains("edit-btn")) {
+                        // Fill form with current data for editing
+                        document.getElementById("budget_id").value = id;
+                        document.getElementById("budget").value = row.cells[2].textContent;
+                        document.getElementById("reminder").value = row.cells[3].textContent;
+                        document.getElementById("start_date").value = row.cells[0].textContent;
+                        document.getElementById("end_date").value = row.cells[1].textContent;
+                    }
+
+                    if (e.target.classList.contains("delete-btn")) {
+                        if (confirm("Are you sure you want to delete this budget?")) {
+                            fetch("budget_and_reminders.php", {
+                                    method: "POST",
+                                    headers: {
+                                        "Content-Type": "application/x-www-form-urlencoded"
+                                    },
+                                    body: `ajax=true&action=delete_budget&id=${id}`
+                                })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.status === "success") {
+                                        row.remove(); // Remove row from table
+                                        alert(data.message);
+                                    } else {
+                                        alert(data.message);
+                                    }
+                                });
+                        }
+                    }
+                });
+
+                // Submit form for add or edit
                 budgetForm.addEventListener("submit", (e) => {
                     e.preventDefault();
                     const formData = new FormData(budgetForm);
                     formData.append("ajax", true);
-                    formData.append("action", "add_budget");
+
+                    const action = document.getElementById("budget_id").value ? "edit_budget" : "add_budget";
+                    formData.append("action", action);
 
                     fetch("budget_and_reminders.php", {
                             method: "POST",
                             body: formData,
-                        }).then(response => response.json())
+                        })
+                        .then(response => response.json())
                         .then(data => {
                             if (data.status === "success") {
-                                const startDate = document.getElementById("start_date").value;
-                                const endDate = document.getElementById("end_date").value;
-                                const budget = document.getElementById("budget").value;
-                                const reminder = document.getElementById("reminder").value;
-                                addBudgetRow(startDate, endDate, budget, reminder);
                                 alert(data.message);
+                                location.reload(); // Reload to update the table
                             } else {
                                 alert(data.message);
                             }
-                        })
-                        .catch(error => console.error("Error:", error));
+                        });
                 });
             });
         </script>

@@ -92,8 +92,8 @@ while ($row = $result2->fetch_assoc()) {
         }
 
         .profile img {
-            width: 40px;
-            height: 40px;
+            width: 90px;
+            height: 120px;
             border-radius: 50%;
             border: 2px solid #888;
             transition: transform 0.3s;
@@ -353,7 +353,7 @@ while ($row = $result2->fetch_assoc()) {
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="profile">
-                <img src="profile.jpg" alt="Profile Picture">
+                <img src="lengzai2.jpg" alt="Profile Picture">
                 <p>Jin Heng Fam</p>
             </div>
             <nav class="menu">
@@ -361,7 +361,6 @@ while ($row = $result2->fetch_assoc()) {
                 <a href="expenses.php">Expenses</a>
                 <a href="trips.php">Trips</a>
                 <a href="budget_and_reminders.php">Budgets & Reminders</a>
-                <a href="#">Support</a>
             </nav>
             <footer>
                 <p>EXPENSIO</p>
@@ -434,7 +433,6 @@ while ($row = $result2->fetch_assoc()) {
                 <button onclick="document.location='expenses.php'">+ New Expense</button>
                 <button onclick="document.location='trips.php'">+ Create Trip</button>
                 <button onclick="openReportDialog()">+ Create Report</button>
-                <button>+ Add Receipt</button>
             </section>
 
             <!-- Monthly Report -->

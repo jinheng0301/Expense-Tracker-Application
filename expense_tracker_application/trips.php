@@ -10,6 +10,18 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
+$edit_row = null; // Variable to hold row data for editing
+
+// Check if an edit request was made
+if (isset($_GET['edit_id'])) {
+    $edit_id = $_GET['edit_id'];
+    $edit_query = "SELECT * FROM expense WHERE id='$edit_id'";
+    $edit_result = $conn->query($edit_query);
+    if ($edit_result->num_rows > 0) {
+        $edit_row = $edit_result->fetch_assoc();
+    }
+}
+
 // Insert new trip
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_trip'])) {
     $date = $_POST['date'];
@@ -21,6 +33,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_trip'])) {
 
     $sql = "INSERT INTO trips (date, location, purpose, amount, report_month, status) 
             VALUES ('$date', '$location', '$purpose', '$amount', '$report_month', '$status')";
+    $conn->query($sql);
+}
+
+// Update trip
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_trip'])) {
+    $id = $_POST['id'];
+    $date = $_POST['date'];
+    $location = $_POST['location'];
+    $purpose = $_POST['purpose'];
+    $amount = $_POST['amount'];
+    $report_month = $_POST['report_month'];
+    $status = $_POST['status'];
+
+    $sql = "UPDATE trips SET date='$date', location='$location', purpose='$purpose', 
+            amount='$amount', report_month='$report_month', status='$status' WHERE id='$id'";
+    $conn->query($sql);
+}
+
+// Delete trip
+if (isset($_GET['delete'])) {
+    $id = $_GET['delete'];
+    $sql = "DELETE FROM trips WHERE id='$id'";
     $conn->query($sql);
 }
 
@@ -76,8 +110,8 @@ $result = $conn->query($sql);
         }
 
         .profile img {
-            width: 40px;
-            height: 40px;
+            width: 90px;
+            height: 120px;
             border-radius: 50%;
             border: 2px solid #888;
             transition: transform 0.3s;
@@ -190,6 +224,33 @@ $result = $conn->query($sql);
             font-weight: bold;
             padding: 20px 0;
         }
+
+        .edit-btn,
+        .delete-btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            font-size: 14px;
+        }
+
+        .edit-btn {
+            background-color: #4CAF50;
+        }
+
+        .edit-btn:hover {
+            background-color: #45A049;
+        }
+
+        .delete-btn {
+            background-color: #f44336;
+        }
+
+        .delete-btn:hover {
+            background-color: #e31e10;
+        }
     </style>
 </head>
 
@@ -198,15 +259,14 @@ $result = $conn->query($sql);
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="profile">
-                <img src="profile.jpg" alt="Profile Picture">
+                <img src="lengzai2.jpg" alt="Profile Picture">
                 <p>Jin Heng Fam</p>
             </div>
             <nav class="menu">
-                <a href="home.php" class="active">Home</a>
+                <a href="home.php">Home</a>
                 <a href="expenses.php">Expenses</a>
-                <a href="trips.php">Trips</a>
+                <a href="trips.php" class="active">Trips</a>
                 <a href="budget_and_reminders.php">Budgets & Reminders</a>
-                <a href="#">Support</a>
             </nav>
             <footer>
                 <p>EXPENSIO</p>
@@ -217,17 +277,23 @@ $result = $conn->query($sql);
             <section class="top-section">
                 <h1>Trips</h1>
                 <form method="POST">
-                    <input type="date" name="date" required>
-                    <input type="text" name="location" placeholder="Location" required>
-                    <input type="text" name="purpose" placeholder="Purpose" required>
-                    <input type="number" step="0.01" name="amount" placeholder="Amount" required>
-                    <input type="text" name="report_month" placeholder="Report Month" required>
-                    <select name="status">
-                        <option value="Pending">Pending</option>
-                        <option value="Approved">Approved</option>
-                        <option value="Not Approved">Not Approved</option>
+                    <input type="hidden" name="id" value="<?= isset($edit_row) ? $edit_row['id'] : ''; ?>">
+                    <input type="date" name="date" value="<?= isset($edit_row) ? $edit_row['date'] : ''; ?>" required>
+                    <input type="text" name="location" placeholder="Location" value="<?= isset($edit_row) ? $edit_row['location'] : ''; ?>" required>
+                    <input type="text" name="purpose" placeholder="Purpose" value="<?= isset($edit_row) ? $edit_row['purpose'] : ''; ?>" required>
+                    <input type="number" step="0.01" name="amount" placeholder="Amount" value="<?= isset($edit_row) ? $edit_row['amount'] : ''; ?>" required>
+                    <input type="text" name="report_month" placeholder="Report Month" value="<?= isset($edit_row) ? $edit_row['report_month'] : ''; ?>" required>
+                    <select name="status" required>
+                        <option value="Pending" <?= isset($edit_row) && $edit_row['status'] == 'Pending' ? 'selected' : ''; ?>>Pending</option>
+                        <option value="Approved" <?= isset($edit_row) && $edit_row['status'] == 'Approved' ? 'selected' : ''; ?>>Approved</option>
+                        <option value="Not Approved" <?= isset($edit_row) && $edit_row['status'] == 'Not Approved' ? 'selected' : ''; ?>>Not Approved</option>
                     </select>
-                    <button type="submit" name="add_trip">Add Trip</button>
+
+                    <?php if (isset($edit_row)): ?>
+                        <button type="submit" name="update_trip">Update Trip</button>
+                    <?php else: ?>
+                        <button type="submit" name="add_trip">Add Trip</button>
+                    <?php endif; ?>
                 </form>
 
                 <table>
@@ -247,6 +313,11 @@ $result = $conn->query($sql);
                             <td>RM<?= $row['amount'] ?></td>
                             <td><?= $row['report_month'] ?></td>
                             <td><?= $row['status'] ?></td>
+                            <td>
+                                <a href="trips.php?edit_id=<?= $row['id'] ?>" class="edit-btn">Edit</a>
+                                <a href="trips.php?delete=<?= $row['id'] ?>" class="delete-btn" onclick="return confirm('Are you sure?')">Delete</a>
+                            </td>
+
                         </tr>
                     <?php endwhile; ?>
                 </table>

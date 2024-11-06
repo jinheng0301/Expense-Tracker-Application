@@ -10,6 +10,18 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
+$edit_row = null; // Variable to hold row data for editing
+
+// Check if an edit request was made
+if (isset($_GET['edit_id'])) {
+    $edit_id = $_GET['edit_id'];
+    $edit_query = "SELECT * FROM expense WHERE id='$edit_id'";
+    $edit_result = $conn->query($edit_query);
+    if ($edit_result->num_rows > 0) {
+        $edit_row = $edit_result->fetch_assoc();
+    }
+}
+
 // Insert new expense
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_expense'])) {
     $date = $_POST['date'];
@@ -21,6 +33,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_expense'])) {
 
     $sql = "INSERT INTO expense (date, details, merchant, amount, report_month, status) 
             VALUES ('$date', '$details', '$merchant', '$amount', '$report_month', '$status')";
+    $conn->query($sql);
+}
+
+// Update expense
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_expense'])) {
+    $id = $_POST['id'];
+    $date = $_POST['date'];
+    $details = $_POST['details'];
+    $merchant = $_POST['merchant'];
+    $amount = $_POST['amount'];
+    $report_month = $_POST['report_month'];
+    $status = $_POST['status'];
+
+    $sql = "UPDATE expense SET date='$date', details='$details', merchant='$merchant', amount='$amount', 
+            report_month='$report_month', status='$status' WHERE id='$id'";
+    $conn->query($sql);
+}
+
+// Delete expense
+if (isset($_GET['delete_id'])) {
+    $id = $_GET['delete_id'];
+    $sql = "DELETE FROM expense WHERE id='$id'";
     $conn->query($sql);
 }
 
@@ -76,8 +110,8 @@ $result = $conn->query($sql);
         }
 
         .profile img {
-            width: 40px;
-            height: 40px;
+            width: 90px;
+            height: 120px;
             border-radius: 50%;
             border: 2px solid #888;
             transition: transform 0.3s;
@@ -190,6 +224,32 @@ $result = $conn->query($sql);
             font-weight: bold;
             padding: 20px 0;
         }
+
+        .edit-btn, .delete-btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            font-size: 14px;
+        }
+
+        .edit-btn {
+            background-color: #4CAF50;
+        }
+
+        .edit-btn:hover {
+            background-color: #45A049;
+        }
+
+        .delete-btn {
+            background-color: #f44336;
+        }
+
+        .delete-btn:hover {
+            background-color: #e31e10;
+        }
     </style>
 </head>
 
@@ -198,15 +258,14 @@ $result = $conn->query($sql);
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="profile">
-                <img src="profile.jpg" alt="Profile Picture">
+                <img src="lengzai2.jpg" alt="Profile Picture">
                 <p>Jin Heng Fam</p>
             </div>
             <nav class="menu">
-                <a href="home.php" class="active">Home</a>
-                <a href="expenses.php">Expenses</a>
+                <a href="home.php">Home</a>
+                <a href="expenses.php" class="active">Expenses</a>
                 <a href="trips.php">Trips</a>
                 <a href="budget_and_reminders.php">Budgets & Reminders</a>
-                <a href="#">Support</a>
             </nav>
             <footer>
                 <p>EXPENSIO</p>
@@ -218,19 +277,25 @@ $result = $conn->query($sql);
             <section class="top-section">
                 <h1>Expenses</h1>
                 <form method="POST">
-                    <input type="date" name="date" required>
-                    <input type="text" name="details" placeholder="Details" required>
-                    <input type="text" name="merchant" placeholder="Merchant" required>
-                    <input type="number" step="0.01" name="amount" placeholder="Amount" required>
-                    <input type="text" name="report_month" placeholder="Report Month" required>
-                    <select name="status" placeholder="Types of expenses" required>
-                        <option value="Tuition fee">Tuition fee</option>
-                        <option value="Assignment">Assignment/Project fee</option>
-                        <option value="Pocket money">Pocket money</option>
-                        <option value="Entertainment">Entertainment</option>
-                        <option value="Nothing">Nothing to spend</option>
+                    <!-- Add a hidden field for updating -->
+                    <input type="hidden" name="id" value="<?= isset($edit_row) ? $edit_row['id'] : '' ?>">
+                    <input type="date" name="date" value="<?= isset($edit_row) ? $edit_row['date'] : '' ?>" required>
+                    <input type="text" name="details" placeholder="Details" value="<?= isset($edit_row) ? $edit_row['details'] : '' ?>" required>
+                    <input type="text" name="merchant" placeholder="Merchant" value="<?= isset($edit_row) ? $edit_row['merchant'] : '' ?>" required>
+                    <input type="number" step="0.01" name="amount" placeholder="Amount" value="<?= isset($edit_row) ? $edit_row['amount'] : '' ?>" required>
+                    <input type="text" name="report_month" placeholder="Report Month" value="<?= isset($edit_row) ? $edit_row['report_month'] : '' ?>" required>
+                    <select name="status" required>
+                        <option value="Tuition fee" <?= isset($edit_row) && $edit_row['status'] == 'Tuition fee' ? 'selected' : '' ?>>Tuition fee</option>
+                        <option value="Assignment" <?= isset($edit_row) && $edit_row['status'] == 'Assignment' ? 'selected' : '' ?>>Assignment/Project fee</option>
+                        <option value="Pocket money" <?= isset($edit_row) && $edit_row['status'] == 'Pocket money' ? 'selected' : '' ?>>Pocket money</option>
+                        <option value="Entertainment" <?= isset($edit_row) && $edit_row['status'] == 'Entertainment' ? 'selected' : '' ?>>Entertainment</option>
+                        <option value="Nothing" <?= isset($edit_row) && $edit_row['status'] == 'Nothing' ? 'selected' : '' ?>>Nothing to spend</option>
                     </select>
-                    <button type="submit" name="add_expense">Add Expense</button>
+                    <?php if (isset($edit_row)): ?>
+                        <button type="submit" name="update_expense">Update Expense</button>
+                    <?php else: ?>
+                        <button type="submit" name="add_expense">Add Expense</button>
+                    <?php endif; ?>
                 </form>
 
                 <table>
@@ -241,6 +306,7 @@ $result = $conn->query($sql);
                         <th>Amount</th>
                         <th>Report Month</th>
                         <th>Types of expenses</th>
+                        <th>Actions</th>
                     </tr>
                     <?php while ($row = $result->fetch_assoc()): ?>
                         <tr>
@@ -250,12 +316,15 @@ $result = $conn->query($sql);
                             <td>RM<?= $row['amount'] ?></td>
                             <td><?= $row['report_month'] ?></td>
                             <td><?= $row['status'] ?></td>
+                            <td>
+                                <a href="?edit_id=<?= $row['id'] ?>" class="edit-btn">Edit</a> |
+                                <a href="?delete_id=<?= $row['id'] ?>" onclick="return confirm('Are you sure you want to delete this expense?')" class="delete-btn">Delete</a>
+                            </td>
                         </tr>
                     <?php endwhile; ?>
                 </table>
             </section>
         </main>
-
     </div>
 
 </body>
